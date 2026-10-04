@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 from pathlib import Path
 from typing import Any, Optional
@@ -9,6 +10,7 @@ PAYMENT_ON_ARRIVAL = "pay_on_arrival"
 PENDING = "pending"
 ARRIVED = "arrived"
 NO_SHOW = "no_show"
+DECLINED = "declined"
 
 
 class OrderStorage:
@@ -33,6 +35,8 @@ class OrderStorage:
             payment_method TEXT NOT NULL,
             arrival_time TEXT NOT NULL,
             branch TEXT NOT NULL DEFAULT '',
+            customer_name TEXT NOT NULL DEFAULT '',
+            rejection_reason TEXT NOT NULL DEFAULT '',
             status TEXT NOT NULL DEFAULT 'pending',
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
@@ -40,10 +44,23 @@ class OrderStorage:
         order_columns = {
             row["name"] for row in self.connection.execute("PRAGMA table_info(orders)")
         }
-        if "branch" not in order_columns:
-            self.connection.execute(
-                "ALTER TABLE orders ADD COLUMN branch TEXT NOT NULL DEFAULT ''"
-            )
+        # The project previously shipped databases with only a subset of the
+        # current order columns. Add each missing field in place so existing
+        # orders remain available and new orders can use the current schema.
+        migrations = {
+            "total": "INTEGER NOT NULL DEFAULT 0",
+            "payment_method": f"TEXT NOT NULL DEFAULT '{PAYMENT_ON_ARRIVAL}'",
+            "arrival_time": "TEXT NOT NULL DEFAULT ''",
+            "branch": "TEXT NOT NULL DEFAULT ''",
+            "customer_name": "TEXT NOT NULL DEFAULT ''",
+            "rejection_reason": "TEXT NOT NULL DEFAULT ''",
+            "created_at": "TEXT NOT NULL DEFAULT ''",
+        }
+        for column, definition in migrations.items():
+            if column not in order_columns:
+                self.connection.execute(
+                    f"ALTER TABLE orders ADD COLUMN {column} {definition}"
+                )
         self.connection.commit()
 
     def create_order(
@@ -54,13 +71,14 @@ class OrderStorage:
         payment_method: str,
         arrival_time: str,
         branch: str,
+        customer_name: str = "",
     ) -> int:
         cursor = self.connection.execute(
             """
-            INSERT INTO orders (user_id, items, total, payment_method, arrival_time, branch)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO orders (user_id, items, total, payment_method, arrival_time, branch, customer_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (user_id, json.dumps(items), total, payment_method, arrival_time, branch),
+            (user_id, json.dumps(items), total, payment_method, arrival_time, branch, customer_name),
         )
         self.connection.commit()
         return cursor.lastrowid
@@ -75,6 +93,19 @@ class OrderStorage:
         cursor = self.connection.execute(
             "UPDATE orders SET status = ? WHERE id = ? AND status = ?",
             (ARRIVED, order_id, PENDING),
+        )
+        self.connection.commit()
+        return cursor.rowcount == 1
+
+    def decline_order(self, order_id: int, reason: str) -> bool:
+        """Atomically decline an unprocessed order and retain the staff reason."""
+        cursor = self.connection.execute(
+            """
+            UPDATE orders
+            SET status = ?, rejection_reason = ?
+            WHERE id = ? AND status = ?
+            """,
+            (DECLINED, reason, order_id, PENDING),
         )
         self.connection.commit()
         return cursor.rowcount == 1
@@ -137,4 +168,6 @@ class OrderStorage:
         self.connection.close()
 
 
-storage = OrderStorage(Path(__file__).with_name("coffee.db"))
+# In production this can point to a mounted Docker volume.  The default keeps
+# the database beside this module for existing local installations.
+storage = OrderStorage(os.getenv("DATABASE_PATH", Path(__file__).with_name("coffee.db")))

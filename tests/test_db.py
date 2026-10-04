@@ -31,6 +31,26 @@ class OrderStorageTests(unittest.TestCase):
             self.storage.get_order_branch(order_id), "Wood Coffee — улица Пушкина"
         )
 
+    def test_order_stores_customer_name_and_decline_reason(self):
+        order_id = self.storage.create_order(
+            user_id=42,
+            items=[],
+            total=0,
+            payment_method=PAYMENT_ONLINE,
+            arrival_time="12:30",
+            branch="Wood Coffee",
+            customer_name="Alex",
+        )
+        self.assertTrue(self.storage.decline_order(order_id, "The shop is closing."))
+        order = self.storage.connection.execute(
+            "SELECT customer_name, status, rejection_reason FROM orders WHERE id = ?",
+            (order_id,),
+        ).fetchone()
+        self.assertEqual(order["customer_name"], "Alex")
+        self.assertEqual(order["status"], "declined")
+        self.assertEqual(order["rejection_reason"], "The shop is closing.")
+        self.assertFalse(self.storage.decline_order(order_id, "Another reason"))
+
     def test_existing_database_is_migrated_with_branch_column(self):
         legacy_path = Path(self.temp_dir.name) / "legacy.db"
         with sqlite3.connect(legacy_path) as connection:
@@ -40,20 +60,16 @@ class OrderStorageTests(unittest.TestCase):
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
                     items TEXT NOT NULL,
-                    total INTEGER NOT NULL,
-                    payment_method TEXT NOT NULL,
-                    arrival_time TEXT NOT NULL,
-                    status TEXT NOT NULL DEFAULT 'pending',
-                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    status TEXT NOT NULL DEFAULT 'pending'
                 )
                 """
             )
             cursor = connection.execute(
                 """
-                INSERT INTO orders (user_id, items, total, payment_method, arrival_time)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO orders (user_id, items)
+                VALUES (?, ?)
                 """,
-                (42, "[]", 85, PAYMENT_ON_ARRIVAL, "12:30"),
+                (42, "[]"),
             )
             legacy_order_id = cursor.lastrowid
 
@@ -63,9 +79,26 @@ class OrderStorageTests(unittest.TestCase):
                 row["name"]
                 for row in legacy_storage.connection.execute("PRAGMA table_info(orders)")
             }
-            self.assertIn("branch", columns)
+            self.assertTrue(
+                {
+                    "total",
+                    "payment_method",
+                    "arrival_time",
+                    "branch",
+                    "customer_name",
+                    "rejection_reason",
+                    "created_at",
+                }.issubset(columns)
+            )
             self.assertEqual(legacy_storage.get_order_customer_id(legacy_order_id), 42)
             self.assertEqual(legacy_storage.get_order_branch(legacy_order_id), "")
+            legacy_order = legacy_storage.connection.execute(
+                "SELECT total, payment_method, arrival_time FROM orders WHERE id = ?",
+                (legacy_order_id,),
+            ).fetchone()
+            self.assertEqual(legacy_order["total"], 0)
+            self.assertEqual(legacy_order["payment_method"], PAYMENT_ON_ARRIVAL)
+            self.assertEqual(legacy_order["arrival_time"], "")
         finally:
             legacy_storage.close()
 

@@ -11,12 +11,17 @@ def yes_no_kb():
     )
 
 
-def order_status_kb(order_id: int):
+def order_status_kb(order_id: int, allow_no_show: bool = True):
+    buttons = [
+        InlineKeyboardButton(text="✅ Arrived", callback_data=f"order:{order_id}:arrived"),
+    ]
+    if allow_no_show:
+        buttons.append(
+            InlineKeyboardButton(text="🟨 No show", callback_data=f"order:{order_id}:no_show")
+        )
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Arrived", callback_data=f"order:{order_id}:arrived"),
-                InlineKeyboardButton(text="🟨 No show", callback_data=f"order:{order_id}:no_show"),
-            ]
+            buttons,
+            [InlineKeyboardButton(text="❌ Decline", callback_data=f"order:{order_id}:decline")],
         ]
     )

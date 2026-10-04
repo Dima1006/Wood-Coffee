@@ -3,6 +3,10 @@ name: Run Telegram demo bot
 on:
   workflow_dispatch:
 
+concurrency:
+  group: telegram-demo-bot
+  cancel-in-progress: true
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest
