@@ -87,7 +87,7 @@ async def categories(message: types.Message, state: FSMContext):
         await OrderState.choosing_item.set()
 
     elif message.text == "🛒 Cart":
-        await show_cart(message)
+        await open_cart(message, state)
 
 
 # ---------- Item selection ----------
@@ -179,12 +179,12 @@ async def confirm(call: types.CallbackQuery, state: FSMContext):
 
 
 # ---------- Cart ----------
-async def show_cart(message: types.Message):
+async def show_cart(message: types.Message) -> bool:
     cart = get_cart(message.from_user.id)
 
     if not cart:
-        await message.answer("Your cart is empty 🕸")
-        return
+        await message.answer("Your cart is empty 🕸", reply_markup=get_main_menu())
+        return False
 
     text = "🛒 Your cart:\n\n"
     for number, item in enumerate(cart, start=1):
@@ -196,7 +196,32 @@ async def show_cart(message: types.Message):
     kb.add("⬅️ Back")
 
     await message.answer(text, reply_markup=kb)
+    return True
 
+
+async def open_cart(message: types.Message, state: FSMContext):
+    if await show_cart(message):
+        await state.set_state(OrderState.viewing_cart.state)
+    else:
+        await state.set_state(OrderState.choosing_category.state)
+
+
+@dp.message_handler(state=OrderState.viewing_cart)
+async def cart_actions(message: types.Message, state: FSMContext):
+    if message.text == "💳 Pay":
+        await pay(message, state)
+        return
+
+    if message.text == "➖ Remove item":
+        await start_removing_item(message, state)
+        return
+
+    if message.text == "⬅️ Back":
+        await state.set_state(OrderState.choosing_category.state)
+        await message.answer("Main menu", reply_markup=get_main_menu())
+        return
+
+    await message.answer("Choose Pay, Remove item, or Back using the buttons.")
 
 
 
@@ -215,7 +240,7 @@ async def start_removing_item(message: types.Message, state: FSMContext):
 @dp.message_handler(state=OrderState.choosing_item_to_remove)
 async def remove_item(message: types.Message, state: FSMContext):
     if message.text == "⬅️ Back":
-        await OrderState.choosing_category.set()
+        await OrderState.viewing_cart.set()
         await show_cart(message)
         return
 
@@ -233,7 +258,7 @@ async def remove_item(message: types.Message, state: FSMContext):
     await message.answer(
         f"✅ Removed: {removed_item['name']} ({removed_item['size']})"
     )
-    await OrderState.choosing_category.set()
+    await OrderState.viewing_cart.set()
     await show_cart(message)
 
 
