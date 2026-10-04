@@ -1,6 +1,6 @@
 # Wood Coffee
 
-A Telegram bot for placing pre-orders at **Wood Coffee**. Customers can choose drinks or desserts, add items to a cart, select an arrival time, and notify staff about a new order.
+A Polish-language Telegram bot for placing pre-orders at **Wood Coffee** locations in Warsaw. Customers can choose drinks or desserts priced in PLN, add items to a cart, select an arrival time, and notify staff about a new order.
 
 ## Features
 
@@ -89,13 +89,13 @@ The products and prices are defined in `menu.py`. To add or update an item, edit
 
 During checkout, customers can choose **Online Payment (test)** or **Pay on Arrival**. Only pay-on-arrival orders are eligible for no-show warnings.
 
-## Coffee shop locations
+## Warsaw coffee shop locations
 
 After `/start`, customers select the location for their order:
 
-- Wood Coffee — улица Пушкина
-- Wood Coffee — улица Ткаченка
-- Wood Coffee — бульвар Вусикера
+- Wood Coffee — ul. Nowy Świat 28
+- Wood Coffee — ul. Marszałkowska 84/92
+- Wood Coffee — ul. Mokotowska 17
 
 The selected location is included in the order notification sent to staff.
 

@@ -18,17 +18,17 @@ class OrderStorageTests(unittest.TestCase):
     def create_order(self, payment_method=PAYMENT_ON_ARRIVAL):
         return self.storage.create_order(
             user_id=42,
-            items=[{"name": "Latte", "size": "Medium", "price": 85}],
-            total=85,
+            items=[{"name": "Latte", "size": "Średnia", "price": 17}],
+            total=17,
             payment_method=payment_method,
             arrival_time="12:30",
-            branch="Wood Coffee — улица Пушкина",
+            branch="Wood Coffee — ul. Nowy Świat 28",
         )
 
     def test_order_stores_selected_branch(self):
         order_id = self.create_order()
         self.assertEqual(
-            self.storage.get_order_branch(order_id), "Wood Coffee — улица Пушкина"
+            self.storage.get_order_branch(order_id), "Wood Coffee — ul. Nowy Świat 28"
         )
 
     def test_order_stores_customer_name_and_decline_reason(self):

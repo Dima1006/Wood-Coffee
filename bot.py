@@ -28,7 +28,7 @@ async def reject_blocked_customer(message: types.Message) -> bool:
         return False
 
     await message.answer(
-        "🚫 Your account is blocked after two no-show orders. Please contact the staff."
+        "🚫 Twoje konto zostało zablokowane po dwóch nieodebranych zamówieniach. Skontaktuj się z obsługą."
     )
     return True
 
@@ -36,8 +36,8 @@ async def reject_blocked_customer(message: types.Message) -> bool:
 # ---------- Main menu ----------
 def get_main_menu():
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("🥤 Drink", "🍰 Dessert")
-    kb.add("🛒 Cart")
+    kb.add("🥤 Napoje", "🍰 Desery")
+    kb.add("🛒 Koszyk")
     return kb
 
 
@@ -49,7 +49,7 @@ async def keep_branch_only(state: FSMContext):
         await state.update_data(branch=branch)
 
 
-async def show_main_menu(message: types.Message, state: FSMContext, text="Main menu"):
+async def show_main_menu(message: types.Message, state: FSMContext, text="Menu główne"):
     await keep_branch_only(state)
     await state.set_state(OrderState.choosing_category.state)
     await message.answer(text, reply_markup=get_main_menu())
@@ -59,7 +59,7 @@ async def restart_branch_selection(message: types.Message, state: FSMContext):
     await state.finish()
     await state.set_state(OrderState.choosing_branch.state)
     await message.answer(
-        "Your checkout session expired. Please choose a coffee shop again.",
+        "Sesja zamówienia wygasła. Wybierz ponownie lokal.",
         reply_markup=get_branch_menu(),
     )
 
@@ -72,7 +72,7 @@ async def start(message: types.Message, state: FSMContext):
     if await reject_blocked_customer(message):
         return
     await message.answer(
-        "☕ Welcome to Wood Coffee!\nChoose a coffee shop 👇",
+        "☕ Witamy w Wood Coffee!\nWybierz lokal 👇",
         reply_markup=get_branch_menu(),
     )
     await state.set_state(OrderState.choosing_branch.state)
@@ -89,12 +89,12 @@ def get_branch_menu():
 @dp.message_handler(state=OrderState.choosing_branch)
 async def choose_branch(message: types.Message, state: FSMContext):
     if message.text not in BRANCHES:
-        await message.answer("Choose a coffee shop using the buttons.")
+        await message.answer("Wybierz lokal za pomocą przycisków.")
         return
 
     await state.update_data(branch=message.text)
     await message.answer(
-        f"📍 Selected: {message.text}\nChoose a category 👇",
+        f"📍 Wybrany lokal: {message.text}\nWybierz kategorię 👇",
         reply_markup=get_main_menu(),
     )
     await state.set_state(OrderState.choosing_category.state)
@@ -103,46 +103,46 @@ async def choose_branch(message: types.Message, state: FSMContext):
 # ---------- Categories ----------
 @dp.message_handler(state=OrderState.choosing_category)
 async def categories(message: types.Message, state: FSMContext):
-    if message.text == "🥤 Drink":
+    if message.text == "🥤 Napoje":
         kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        kb.add("Coffee", "Tea", "Milk Drink", "⬅️ Back")
-        await message.answer("Choose a drink:", reply_markup=kb)
+        kb.add("Kawa", "Herbata", "Napoje mleczne", "⬅️ Wstecz")
+        await message.answer("Wybierz napój:", reply_markup=kb)
         await state.set_state(OrderState.choosing_item.state)
 
-    elif message.text == "🍰 Dessert":
+    elif message.text == "🍰 Desery":
         kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
         for d, p in DESSERTS.items():
-            kb.add(f"{d} — {p}₴")
-        kb.add("⬅️ Back")
-        await message.answer("Choose a dessert:", reply_markup=kb)
+            kb.add(f"{d} — {p} zł")
+        kb.add("⬅️ Wstecz")
+        await message.answer("Wybierz deser:", reply_markup=kb)
         await state.set_state(OrderState.choosing_item.state)
 
-    elif message.text == "🛒 Cart":
+    elif message.text == "🛒 Koszyk":
         await open_cart(message, state)
 
     else:
-        await message.answer("Choose a category using the buttons.")
+        await message.answer("Wybierz kategorię za pomocą przycisków.")
 
 
 # ---------- Item selection ----------
 @dp.message_handler(state=OrderState.choosing_item)
 async def pick_item(message: types.Message, state: FSMContext):
-    if message.text == "⬅️ Back":
+    if message.text == "⬅️ Wstecz":
         await show_main_menu(message, state)
         return
 
     menus = {
-        "Coffee": COFFEE,
-        "Tea": TEA,
-        "Milk Drink": MILK_DRINK,
+        "Kawa": COFFEE,
+        "Herbata": TEA,
+        "Napoje mleczne": MILK_DRINK,
     }
 
     if message.text in menus:
         kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
         for name in menus[message.text]:
             kb.add(name)
-        kb.add("⬅️ Back")
-        await message.answer("Choose an item:", reply_markup=kb)
+        kb.add("⬅️ Wstecz")
+        await message.answer("Wybierz produkt:", reply_markup=kb)
         return
 
     all_drinks = {**COFFEE, **TEA, **MILK_DRINK}
@@ -152,8 +152,8 @@ async def pick_item(message: types.Message, state: FSMContext):
         kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
         for size in all_drinks[message.text]:
             kb.add(size)
-        kb.add("⬅️ Back")
-        await message.answer("Choose a size:", reply_markup=kb)
+        kb.add("⬅️ Wstecz")
+        await message.answer("Wybierz rozmiar lub smak:", reply_markup=kb)
         await state.set_state(OrderState.choosing_size.state)
         return
 
@@ -166,19 +166,19 @@ async def pick_item(message: types.Message, state: FSMContext):
                 temp_price=DESSERTS[name]
             )
             await message.answer(
-                f"Add {name}?",
+                f"Dodać {name}?",
                 reply_markup=yes_no_kb()
             )
             await state.set_state(OrderState.confirm_add.state)
             return
 
-    await message.answer("Choose an item using the buttons.")
+    await message.answer("Wybierz produkt za pomocą przycisków.")
 
 
 # ---------- Size ----------
 @dp.message_handler(state=OrderState.choosing_size)
 async def pick_size(message: types.Message, state: FSMContext):
-    if message.text == "⬅️ Back":
+    if message.text == "⬅️ Wstecz":
         await show_main_menu(message, state)
         return
 
@@ -191,14 +191,14 @@ async def pick_size(message: types.Message, state: FSMContext):
         return
 
     if message.text not in all_drinks[name]:
-        await message.answer("Choose a button 👇")
+        await message.answer("Wybierz jedną z dostępnych opcji 👇")
         return
 
     price = all_drinks[name][message.text]
     await state.update_data(temp_size=message.text, temp_price=price)
 
     await message.answer(
-        f"{name} ({message.text}) — {price}₴\nAdd it?",
+        f"{name} ({message.text}) — {price} zł\nDodać?",
         reply_markup=yes_no_kb()
     )
     await state.set_state(OrderState.confirm_add.state)
@@ -213,11 +213,11 @@ async def confirm(call: types.CallbackQuery, state: FSMContext):
     if call.data == "yes":
         data = await state.get_data()
         if not all(key in data for key in ("temp_name", "temp_size", "temp_price")):
-            await call.answer("This item selection expired.", show_alert=True)
+            await call.answer("Wybór produktu wygasł.", show_alert=True)
             await state.finish()
             await state.set_state(OrderState.choosing_branch.state)
             await call.message.answer(
-                "Please choose a coffee shop again.",
+                "Wybierz ponownie lokal.",
                 reply_markup=get_branch_menu(),
             )
             return
@@ -227,9 +227,9 @@ async def confirm(call: types.CallbackQuery, state: FSMContext):
             "size": data["temp_size"],
             "price": data["temp_price"]
         })
-        await call.message.answer("✅ Added", reply_markup=get_main_menu())
+        await call.message.answer("✅ Dodano", reply_markup=get_main_menu())
     else:
-        await call.message.answer("❌ Cancelled", reply_markup=get_main_menu())
+        await call.message.answer("❌ Anulowano", reply_markup=get_main_menu())
 
     await call.answer()
     await keep_branch_only(state)
@@ -238,7 +238,7 @@ async def confirm(call: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query_handler(state=OrderState.confirm_add)
 async def invalid_confirmation(call: types.CallbackQuery):
-    await call.answer("Use Yes or No.", show_alert=True)
+    await call.answer("Wybierz Tak lub Nie.", show_alert=True)
 
 
 # ---------- Cart ----------
@@ -246,17 +246,17 @@ async def show_cart(message: types.Message) -> bool:
     cart = get_cart(message.from_user.id)
 
     if not cart:
-        await message.answer("Your cart is empty 🕸", reply_markup=get_main_menu())
+        await message.answer("Twój koszyk jest pusty 🕸", reply_markup=get_main_menu())
         return False
 
-    text = "🛒 Your cart:\n\n"
+    text = "🛒 Twój koszyk:\n\n"
     for number, i in enumerate(cart, start=1):
-        text += f"{number}. {i['name']} ({i['size']}) — {i['price']}₴\n"
-    text += f"\n💰 Total: {cart_total(message.from_user.id)}₴"
+        text += f"{number}. {i['name']} ({i['size']}) — {i['price']} zł\n"
+    text += f"\n💰 Razem: {cart_total(message.from_user.id)} zł"
 
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("💳 Pay", "⬅️ Back")
-    kb.add("➖ Remove item")
+    kb.add("💳 Zapłać", "⬅️ Wstecz")
+    kb.add("➖ Usuń pozycję")
     await message.answer(text, reply_markup=kb)
     return True
 
@@ -274,126 +274,126 @@ async def show_payment_methods(message: types.Message, state: FSMContext):
         return
 
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    kb.add("💳 Online Payment (test)", "💵 Pay on Arrival")
-    kb.add("⬅️ Back")
+    kb.add("💳 Płatność online (test)", "💵 Płatność na miejscu")
+    kb.add("⬅️ Wstecz")
     await state.set_state(OrderState.choosing_payment.state)
-    await message.answer("Choose a payment method:", reply_markup=kb)
+    await message.answer("Wybierz metodę płatności:", reply_markup=kb)
 
 
 @dp.message_handler(state=OrderState.viewing_cart)
 async def cart_actions(message: types.Message, state: FSMContext):
-    if message.text == "💳 Pay":
+    if message.text == "💳 Zapłać":
         if await reject_blocked_customer(message):
             return
         await show_payment_methods(message, state)
         return
 
-    if message.text == "➖ Remove item":
+    if message.text == "➖ Usuń pozycję":
         if not get_cart(message.from_user.id):
             await open_cart(message, state)
             return
 
         kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        kb.add("⬅️ Back")
+        kb.add("⬅️ Wstecz")
         await state.set_state(OrderState.choosing_item_to_remove.state)
-        await message.answer("Enter the item number to remove:", reply_markup=kb)
+        await message.answer("Podaj numer pozycji do usunięcia:", reply_markup=kb)
         return
 
-    if message.text == "⬅️ Back":
+    if message.text == "⬅️ Wstecz":
         await show_main_menu(message, state)
         return
 
-    if message.text == "🛒 Cart":
+    if message.text == "🛒 Koszyk":
         await open_cart(message, state)
         return
 
-    await message.answer("Choose Pay, Remove item, or Back using the buttons.")
+    await message.answer("Wybierz Zapłać, Usuń pozycję lub Wstecz.")
 
 
 @dp.message_handler(state=OrderState.choosing_item_to_remove)
 async def remove_item(message: types.Message, state: FSMContext):
-    if message.text == "⬅️ Back":
+    if message.text == "⬅️ Wstecz":
         await open_cart(message, state)
         return
 
     try:
         item_number = int(message.text)
     except (TypeError, ValueError):
-        await message.answer("Enter a number from the cart.")
+        await message.answer("Podaj numer pozycji z koszyka.")
         return
 
     removed_item = remove_from_cart(message.from_user.id, item_number - 1)
     if removed_item is None:
-        await message.answer("There is no item with that number. Try again.")
+        await message.answer("W koszyku nie ma pozycji o tym numerze. Spróbuj ponownie.")
         return
 
-    await message.answer(f"✅ Removed: {removed_item['name']} ({removed_item['size']})")
+    await message.answer(f"✅ Usunięto: {removed_item['name']} ({removed_item['size']})")
     await open_cart(message, state)
 
 
 # ---------- Payment ----------
 @dp.message_handler(state=OrderState.choosing_payment)
 async def choose_payment_method(message: types.Message, state: FSMContext):
-    if message.text == "⬅️ Back":
+    if message.text == "⬅️ Wstecz":
         await open_cart(message, state)
         return
 
     payment_methods = {
-        "💳 Online Payment (test)": PAYMENT_ONLINE,
-        "💵 Pay on Arrival": PAYMENT_ON_ARRIVAL,
+        "💳 Płatność online (test)": PAYMENT_ONLINE,
+        "💵 Płatność na miejscu": PAYMENT_ON_ARRIVAL,
     }
     payment_method = payment_methods.get(message.text)
     if not payment_method:
-        await message.answer("Choose a payment method using the buttons.")
+        await message.answer("Wybierz metodę płatności za pomocą przycisków.")
         return
 
     await state.update_data(payment_method=payment_method)
     if payment_method == PAYMENT_ONLINE:
-        await message.answer("✅ Online payment successful (test)")
+        await message.answer("✅ Płatność online zakończona powodzeniem (test)")
     else:
-        await message.answer("💵 You will pay when you arrive.")
+        await message.answer("💵 Zapłacisz na miejscu.")
 
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.add("5 min", "10 min", "15 min")
-    kb.add("⬅️ Back")
+    kb.add("⬅️ Wstecz")
     await state.set_state(OrderState.choosing_time.state)
-    await message.answer("How many minutes until you arrive?", reply_markup=kb)
+    await message.answer("Za ile minut będziesz na miejscu?", reply_markup=kb)
 
 
 # ---------- Arrival time ----------
 @dp.message_handler(state=OrderState.choosing_time)
 async def time_handler(message: types.Message, state: FSMContext):
-    if message.text == "⬅️ Back":
+    if message.text == "⬅️ Wstecz":
         await show_payment_methods(message, state)
         return
 
     if message.text not in ARRIVAL_OPTIONS:
-        await message.answer("Choose 5, 10, or 15 minutes using the buttons.")
+        await message.answer("Wybierz 5, 10 lub 15 minut za pomocą przycisków.")
         return
 
     arrival = message.text
     await state.update_data(arrival_time=arrival)
     await state.set_state(OrderState.entering_customer_name.state)
     await message.answer(
-        "Please enter the name for the order.",
-        reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add("⬅️ Back"),
+        "Podaj imię do zamówienia.",
+        reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add("⬅️ Wstecz"),
     )
 
 
 # ---------- Customer name and order creation ----------
 @dp.message_handler(state=OrderState.entering_customer_name)
 async def customer_name_handler(message: types.Message, state: FSMContext):
-    if message.text == "⬅️ Back":
+    if message.text == "⬅️ Wstecz":
         kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
         kb.add("5 min", "10 min", "15 min")
-        kb.add("⬅️ Back")
+        kb.add("⬅️ Wstecz")
         await state.set_state(OrderState.choosing_time.state)
-        await message.answer("How many minutes until you arrive?", reply_markup=kb)
+        await message.answer("Za ile minut będziesz na miejscu?", reply_markup=kb)
         return
 
     customer_name = (message.text or "").strip()
     if not customer_name or len(customer_name) > 100:
-        await message.answer("Enter a name from 1 to 100 characters.")
+        await message.answer("Podaj imię o długości od 1 do 100 znaków.")
         return
 
     cart = get_cart(message.from_user.id)
@@ -425,17 +425,17 @@ async def customer_name_handler(message: types.Message, state: FSMContext):
         )
     except Exception:
         logger.exception("Failed to create an order for customer %s", message.from_user.id)
-        await message.answer("We could not create your order. Please try again.")
+        await message.answer("Nie udało się utworzyć zamówienia. Spróbuj ponownie.")
         return
 
-    payment_label = "Online Payment (test)" if payment_method == PAYMENT_ONLINE else "Pay on Arrival"
+    payment_label = "Płatność online (test)" if payment_method == PAYMENT_ONLINE else "Płatność na miejscu"
     msg = (
-        f"🔔 NEW ORDER #{order_id}\n"
-        f"👤 Name: {customer_name}\n"
-        f"🆔 Customer ID: {message.from_user.id}\n"
-        f"📍 Coffee shop: {branch}\n"
-        f"💳 Payment: {payment_label}\n"
-        f"⏰ Arrival: in {arrival}\n\n{order}\n\n💰 Total: {total}₴"
+        f"🔔 NOWE ZAMÓWIENIE #{order_id}\n"
+        f"👤 Imię: {customer_name}\n"
+        f"🆔 ID klienta: {message.from_user.id}\n"
+        f"📍 Lokal: {branch}\n"
+        f"💳 Płatność: {payment_label}\n"
+        f"⏰ Przyjazd: za {arrival}\n\n{order}\n\n💰 Razem: {total} zł"
     )
 
     for staff in STAFF_IDS:
@@ -451,7 +451,7 @@ async def customer_name_handler(message: types.Message, state: FSMContext):
     await keep_branch_only(state)
     await state.set_state(OrderState.choosing_category.state)
     await message.answer(
-        f"✅ We will be waiting for you in {arrival}\n📍 {branch}",
+        f"✅ Zamówienie przyjęte. Przyjazd za {arrival}\n📍 {branch}",
         reply_markup=get_main_menu(),
     )
 
@@ -466,28 +466,28 @@ async def clear_order_controls(call: types.CallbackQuery, order_id: int):
 @dp.callback_query_handler(lambda call: call.data and call.data.startswith("order:"), state="*")
 async def process_order_status(call: types.CallbackQuery):
     if call.from_user.id not in STAFF_IDS:
-        await call.answer("Only staff can process orders.", show_alert=True)
+        await call.answer("Tylko obsługa może zmieniać status zamówienia.", show_alert=True)
         return
 
     try:
         _, order_id_text, action = call.data.split(":")
         order_id = int(order_id_text)
     except (ValueError, AttributeError):
-        await call.answer("Invalid order action.", show_alert=True)
+        await call.answer("Nieprawidłowa operacja.", show_alert=True)
         return
 
     if action == "arrived":
         if not storage.mark_arrived(order_id):
-            await call.answer("This order has already been processed.", show_alert=True)
+            await call.answer("To zamówienie zostało już obsłużone.", show_alert=True)
             return
         await clear_order_controls(call, order_id)
-        await call.answer("Order marked as arrived.")
+        await call.answer("Zamówienie oznaczono jako odebrane.")
         return
 
     if action == "no_show":
         result = storage.mark_no_show(order_id)
         if result is None:
-            await call.answer("This order has already been processed.", show_alert=True)
+            await call.answer("To zamówienie zostało już obsłużone.", show_alert=True)
             return
 
         warning_count, is_blocked = result
@@ -495,13 +495,13 @@ async def process_order_status(call: types.CallbackQuery):
         if customer_id is not None:
             if is_blocked:
                 customer_message = (
-                    "🚫 Your account has been blocked after two no-show orders. "
-                    "Please contact the staff."
+                    "🚫 Twoje konto zostało zablokowane po dwóch nieodebranych zamówieniach. "
+                    "Skontaktuj się z obsługą."
                 )
             else:
                 customer_message = (
-                    f"🟨 Yellow card: this is warning {warning_count}/2 for a no-show order. "
-                    "A second warning will block new orders."
+                    f"🟨 Ostrzeżenie {warning_count}/2 za nieodebrane zamówienie. "
+                    "Drugie ostrzeżenie zablokuje możliwość składania zamówień."
                 )
             try:
                 await bot.send_message(customer_id, customer_message)
@@ -513,7 +513,7 @@ async def process_order_status(call: types.CallbackQuery):
                 )
 
         await clear_order_controls(call, order_id)
-        await call.answer(f"No-show recorded. Warning {warning_count}/2.")
+        await call.answer(f"Zapisano nieodebrane zamówienie. Ostrzeżenie {warning_count}/2.")
         return
 
     if action == "decline":
@@ -526,30 +526,30 @@ async def process_order_status(call: types.CallbackQuery):
             rejection_chat_id=call.message.chat.id,
         )
         await call.message.answer(
-            f"Enter the reason for declining order #{order_id}."
+            f"Podaj powód odrzucenia zamówienia #{order_id}."
         )
         return
 
-    await call.answer("Invalid order action.", show_alert=True)
+    await call.answer("Nieprawidłowa operacja.", show_alert=True)
 
 
 @dp.message_handler(state=OrderState.entering_rejection_reason)
 async def rejection_reason_handler(message: types.Message, state: FSMContext):
     if message.from_user.id not in STAFF_IDS:
         await state.finish()
-        await message.answer("Only staff can decline orders.")
+        await message.answer("Tylko obsługa może odrzucać zamówienia.")
         return
 
     reason = (message.text or "").strip()
     if not reason or len(reason) > 500:
-        await message.answer("Enter a reason from 1 to 500 characters.")
+        await message.answer("Podaj powód o długości od 1 do 500 znaków.")
         return
 
     data = await state.get_data()
     order_id = data.get("rejection_order_id")
     if not isinstance(order_id, int) or not storage.decline_order(order_id, reason):
         await state.finish()
-        await message.answer("This order has already been processed.")
+        await message.answer("To zamówienie zostało już obsłużone.")
         return
 
     customer_id = storage.get_order_customer_id(order_id)
@@ -557,7 +557,7 @@ async def rejection_reason_handler(message: types.Message, state: FSMContext):
         try:
             await bot.send_message(
                 customer_id,
-                f"❌ Unfortunately, order #{order_id} was declined.\nReason: {reason}",
+                f"❌ Niestety zamówienie #{order_id} zostało odrzucone.\nPowód: {reason}",
             )
         except Exception:
             logger.exception("Failed to notify customer about declined order %s", order_id)
@@ -575,23 +575,23 @@ async def rejection_reason_handler(message: types.Message, state: FSMContext):
             logger.exception("Failed to clear controls for declined order %s", order_id)
 
     await state.finish()
-    await message.answer(f"Order #{order_id} declined. The customer has been notified.")
+    await message.answer(f"Zamówienie #{order_id} odrzucono. Klient został powiadomiony.")
 
 
 @dp.message_handler(commands=["unblock"], state="*")
 async def unblock_customer(message: types.Message):
     if message.from_user.id not in STAFF_IDS:
-        await message.answer("Only staff can unblock customers.")
+        await message.answer("Tylko obsługa może odblokowywać klientów.")
         return
 
     try:
         user_id = int(message.get_args())
     except ValueError:
-        await message.answer("Usage: /unblock <telegram_user_id>")
+        await message.answer("Użycie: /unblock <telegram_user_id>")
         return
 
     storage.unblock_customer(user_id)
-    await message.answer(f"Customer {user_id} has been unblocked and their warnings were reset.")
+    await message.answer(f"Klient {user_id} został odblokowany, a ostrzeżenia wyzerowane.")
 
 
 @dp.errors_handler()
@@ -605,11 +605,11 @@ async def handle_unexpected_error(update: types.Update, exception: Exception):
     try:
         if update.callback_query:
             await update.callback_query.answer(
-                "Something went wrong. Please try again.",
+                "Coś poszło nie tak. Spróbuj ponownie.",
                 show_alert=True,
             )
         elif update.message:
-            await update.message.answer("Something went wrong. Please try /start again.")
+            await update.message.answer("Coś poszło nie tak. Spróbuj ponownie lub użyj /start.")
     except Exception:
         logger.exception("Failed to report an error to the user")
 

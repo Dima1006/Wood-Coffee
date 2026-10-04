@@ -16,7 +16,7 @@ STAFF_IDS = [
 ]
 
 BRANCHES = (
-    "Wood Coffee — улица Пушкина",
-    "Wood Coffee — улица Ткаченка",
-    "Wood Coffee — бульвар Вусикера",
+    "Wood Coffee — ul. Nowy Świat 28",
+    "Wood Coffee — ul. Marszałkowska 84/92",
+    "Wood Coffee — ul. Mokotowska 17",
 )

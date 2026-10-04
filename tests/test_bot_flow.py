@@ -120,7 +120,7 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
         user_id = user_id or self.USER_ID
         add_to_cart(
             user_id,
-            {"name": name, "size": "Medium", "price": 85},
+            {"name": name, "size": "Średnia", "price": 17},
         )
 
     def response_texts(self):
@@ -132,6 +132,29 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
                 texts.append(call.args[1])
         return texts
 
+    async def test_warsaw_polish_localization(self):
+        self.assertEqual(
+            app.BRANCHES,
+            (
+                "Wood Coffee — ul. Nowy Świat 28",
+                "Wood Coffee — ul. Marszałkowska 84/92",
+                "Wood Coffee — ul. Mokotowska 17",
+            ),
+        )
+        self.assertEqual(app.COFFEE["Latte"]["Średnia"], 17)
+
+        menu_buttons = {
+            getattr(button, "text", button)
+            for row in app.get_main_menu().keyboard
+            for button in row
+        }
+        self.assertEqual(menu_buttons, {"🥤 Napoje", "🍰 Desery", "🛒 Koszyk"})
+
+        self.add_test_item()
+        await self.set_state(OrderState.choosing_category, branch=app.BRANCHES[0])
+        await self.send_message_update("🛒 Koszyk")
+        self.assertTrue(any("17 zł" in text for text in self.response_texts()))
+
     async def test_complete_order_flow_from_start(self):
         state = self.state_for()
 
@@ -139,17 +162,17 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await state.get_state(), OrderState.choosing_branch.state)
 
         await self.send_message_update(app.BRANCHES[0])
-        await self.send_message_update("🥤 Drink")
-        await self.send_message_update("Coffee")
+        await self.send_message_update("🥤 Napoje")
+        await self.send_message_update("Kawa")
         await self.send_message_update("Latte")
-        await self.send_message_update("Medium")
+        await self.send_message_update("Średnia")
         self.assertEqual(await state.get_state(), OrderState.confirm_add.state)
 
         await self.send_callback_update("yes")
         self.assertEqual(len(get_cart(self.USER_ID)), 1)
-        await self.send_message_update("🛒 Cart")
-        await self.send_message_update("💳 Pay")
-        await self.send_message_update("💳 Online Payment (test)")
+        await self.send_message_update("🛒 Koszyk")
+        await self.send_message_update("💳 Zapłać")
+        await self.send_message_update("💳 Płatność online (test)")
         await self.send_message_update("10 min")
         self.assertEqual(await state.get_state(), OrderState.entering_customer_name.state)
         await self.send_message_update("Alex")
@@ -159,7 +182,7 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
         ).fetchone()
         self.assertEqual(order["user_id"], self.USER_ID)
         self.assertEqual(order["customer_name"], "Alex")
-        self.assertEqual(order["total"], 85)
+        self.assertEqual(order["total"], 17)
         self.assertEqual(order["payment_method"], PAYMENT_ONLINE)
         self.assertEqual(order["branch"], app.BRANCHES[0])
         self.assertEqual(await state.get_state(), OrderState.choosing_category.state)
@@ -171,17 +194,17 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
             branch=app.BRANCHES[0],
         )
 
-        await self.send_message_update("🛒 Cart")
+        await self.send_message_update("🛒 Koszyk")
         self.assertEqual(await state.get_state(), OrderState.viewing_cart.state)
 
-        await self.send_message_update("💳 Pay")
+        await self.send_message_update("💳 Zapłać")
         self.assertEqual(await state.get_state(), OrderState.choosing_payment.state)
-        self.assertIn("Choose a payment method:", self.response_texts())
+        self.assertIn("Wybierz metodę płatności:", self.response_texts())
 
-        await self.send_message_update("⬅️ Back")
+        await self.send_message_update("⬅️ Wstecz")
         self.assertEqual(await state.get_state(), OrderState.viewing_cart.state)
 
-        await self.send_message_update("⬅️ Back")
+        await self.send_message_update("⬅️ Wstecz")
         self.assertEqual(await state.get_state(), OrderState.choosing_category.state)
 
     async def test_remove_item_validates_input_and_handles_empty_cart(self):
@@ -192,7 +215,7 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
             branch=app.BRANCHES[0],
         )
 
-        await self.send_message_update("➖ Remove item")
+        await self.send_message_update("➖ Usuń pozycję")
         self.assertEqual(
             await state.get_state(),
             OrderState.choosing_item_to_remove.state,
@@ -201,14 +224,14 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
         await self.send_message_update("not a number")
         await self.send_message_update("99")
         self.assertEqual(len(get_cart(self.USER_ID)), 2)
-        self.assertIn("Enter a number from the cart.", self.response_texts())
-        self.assertIn("There is no item with that number. Try again.", self.response_texts())
+        self.assertIn("Podaj numer pozycji z koszyka.", self.response_texts())
+        self.assertIn("W koszyku nie ma pozycji o tym numerze. Spróbuj ponownie.", self.response_texts())
 
         await self.send_message_update("2")
         self.assertEqual(len(get_cart(self.USER_ID)), 1)
         self.assertEqual(await state.get_state(), OrderState.viewing_cart.state)
 
-        await self.send_message_update("➖ Remove item")
+        await self.send_message_update("➖ Usuń pozycję")
         await self.send_message_update("1")
         self.assertEqual(get_cart(self.USER_ID), [])
         self.assertEqual(await state.get_state(), OrderState.choosing_category.state)
@@ -216,8 +239,8 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
     async def test_both_payment_methods_complete_and_allow_a_new_order(self):
         for offset, (button, expected_method) in enumerate(
             (
-                ("💳 Online Payment (test)", PAYMENT_ONLINE),
-                ("💵 Pay on Arrival", PAYMENT_ON_ARRIVAL),
+                ("💳 Płatność online (test)", PAYMENT_ONLINE),
+                ("💵 Płatność na miejscu", PAYMENT_ON_ARRIVAL),
             )
         ):
             user_id = self.USER_ID + offset
@@ -228,18 +251,18 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
                 branch=app.BRANCHES[0],
             )
 
-            await self.send_message_update("💳 Pay", user_id=user_id)
+            await self.send_message_update("💳 Zapłać", user_id=user_id)
             await self.send_message_update(button, user_id=user_id)
             self.assertEqual(await state.get_state(), OrderState.choosing_time.state)
 
             await self.send_message_update("7 min", user_id=user_id)
             self.assertEqual(await state.get_state(), OrderState.choosing_time.state)
 
-            await self.send_message_update("⬅️ Back", user_id=user_id)
+            await self.send_message_update("⬅️ Wstecz", user_id=user_id)
             self.assertEqual(await state.get_state(), OrderState.choosing_payment.state)
             await self.send_message_update(button, user_id=user_id)
             await self.send_message_update("5 min", user_id=user_id)
-            await self.send_message_update(f"Customer {user_id}", user_id=user_id)
+            await self.send_message_update(f"Klient {user_id}", user_id=user_id)
 
             row = self.order_storage.connection.execute(
                 "SELECT payment_method FROM orders WHERE user_id = ?",
@@ -250,7 +273,7 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(await state.get_state(), OrderState.choosing_category.state)
             self.assertEqual((await state.get_data())["branch"], app.BRANCHES[0])
 
-            await self.send_message_update("🥤 Drink", user_id=user_id)
+            await self.send_message_update("🥤 Napoje", user_id=user_id)
             self.assertEqual(await state.get_state(), OrderState.choosing_item.state)
 
     async def test_unknown_text_gets_a_response_in_every_message_state(self):
@@ -300,8 +323,8 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
             OrderState.confirm_add,
             branch=app.BRANCHES[0],
             temp_name="Latte",
-            temp_size="Medium",
-            temp_price=85,
+            temp_size="Średnia",
+            temp_price=17,
         )
 
         await self.send_callback_update("maybe")
@@ -340,7 +363,7 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(get_cart(self.USER_ID), [])
         self.assertEqual(await state.get_state(), OrderState.choosing_category.state)
         self.assertTrue(
-            any(text.startswith("✅ We will be waiting") for text in self.response_texts())
+            any(text.startswith("✅ Zamówienie przyjęte") for text in self.response_texts())
         )
         self.assertTrue(
             any("Failed to notify staff member 999" in line for line in captured_logs.output)
@@ -371,7 +394,7 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(stored_arrival, arrival)
             self.assertTrue(
                 any(
-                    text.startswith(f"✅ We will be waiting for you in {arrival}")
+                    text.startswith(f"✅ Zamówienie przyjęte. Przyjazd za {arrival}")
                     for text in self.response_texts()
                 )
             )
@@ -396,7 +419,7 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await state.get_state(), OrderState.entering_customer_name.state)
         self.assertEqual(len(get_cart(self.USER_ID)), 1)
         self.assertIn(
-            "We could not create your order. Please try again.",
+            "Nie udało się utworzyć zamówienia. Spróbuj ponownie.",
             self.response_texts(),
         )
 
@@ -404,8 +427,8 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
         for _ in range(2):
             order_id = self.order_storage.create_order(
                 user_id=self.USER_ID,
-                items=[{"name": "Latte", "size": "Medium", "price": 85}],
-                total=85,
+                items=[{"name": "Latte", "size": "Średnia", "price": 17}],
+                total=17,
                 payment_method=PAYMENT_ON_ARRIVAL,
                 arrival_time="12:30",
                 branch=app.BRANCHES[0],
@@ -417,17 +440,17 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
             OrderState.viewing_cart,
             branch=app.BRANCHES[0],
         )
-        await self.send_message_update("💳 Pay")
+        await self.send_message_update("💳 Zapłać")
 
         self.assertEqual(await state.get_state(), OrderState.viewing_cart.state)
-        self.assertTrue(any("blocked" in text for text in self.response_texts()))
+        self.assertTrue(any("zablokowane" in text for text in self.response_texts()))
 
     async def test_staff_status_callback_is_routed_and_processed(self):
         app.STAFF_IDS = [self.USER_ID]
         order_id = self.order_storage.create_order(
             user_id=100,
-            items=[{"name": "Latte", "size": "Medium", "price": 85}],
-            total=85,
+            items=[{"name": "Latte", "size": "Średnia", "price": 17}],
+            total=17,
             payment_method=PAYMENT_ON_ARRIVAL,
             arrival_time="12:30",
             branch=app.BRANCHES[0],
@@ -456,8 +479,8 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
         app.STAFF_IDS = [self.USER_ID]
         order_id = self.order_storage.create_order(
             user_id=100,
-            items=[{"name": "Latte", "size": "Medium", "price": 85}],
-            total=85,
+            items=[{"name": "Latte", "size": "Średnia", "price": 17}],
+            total=17,
             payment_method=PAYMENT_ON_ARRIVAL,
             arrival_time="10 min",
             branch=app.BRANCHES[0],
@@ -481,8 +504,8 @@ class BotFlowTests(unittest.IsolatedAsyncioTestCase):
         app.STAFF_IDS = [self.USER_ID]
         order_id = self.order_storage.create_order(
             user_id=100,
-            items=[{"name": "Latte", "size": "Medium", "price": 85}],
-            total=85,
+            items=[{"name": "Latte", "size": "Średnia", "price": 17}],
+            total=17,
             payment_method=PAYMENT_ONLINE,
             arrival_time="12:30",
             branch=app.BRANCHES[0],

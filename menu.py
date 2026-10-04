@@ -1,46 +1,47 @@
 COFFEE = {
     "Cappuccino": {
-        "Small": 65,
-        "Medium": 78,
-        "Large": 90,
+        "Mała": 14,
+        "Średnia": 16,
+        "Duża": 18,
     },
     "Latte": {
-        "Small": 70,
-        "Medium": 85,
-        "Large": 100,
+        "Mała": 15,
+        "Średnia": 17,
+        "Duża": 19,
     },
     "Americano": {
-        "Small": 50,
-        "Medium": 60,
-        "Large": 70,
+        "Mała": 11,
+        "Średnia": 13,
+        "Duża": 15,
     },
 }
 
 TEA = {
-    "Black Tea": {
-        "Small": 40,
-        "Medium": 50,
-        "Large": 60,
+    "Czarna herbata": {
+        "Mała": 12,
+        "Średnia": 14,
+        "Duża": 16,
     },
-    "Green Tea": {
-        "Small": 40,
-        "Medium": 50,
-        "Large": 60,
+    "Zielona herbata": {
+        "Mała": 12,
+        "Średnia": 14,
+        "Duża": 16,
     },
 }
 
 MILK_DRINK = {
-    "Cocoa": {
-        "Medium": 55,
-        "Large": 65,
+    "Kakao": {
+        "Średnie": 15,
+        "Duże": 17,
     },
     "Milkshake": {
-        "Strawberry": 70,
-        "Chocolate": 70,
+        "Truskawkowy": 18,
+        "Czekoladowy": 18,
     },
 }
 
 DESSERTS = {
-    "Croissant": 45,
-    "Cheesecake": 70,
+    "Croissant": 11,
+    "Sernik": 18,
+    "Szarlotka": 17,
 }
