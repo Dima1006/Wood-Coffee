@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Menu · {{ venue.name }}{% endblock %}
+{% block nav %}{% include "_panel_nav.html" %}{% endblock %}
+{% block content %}
+<h1>Menu</h1>
+{% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+<p class="muted">Prices: one line per size, like <code>Small 6.50</code>. For a single price just write <code>5.00</code>.</p>
+
+<form method="post" action="/panel/menu/category" class="row-form">
+  <input name="name" placeholder="New category, e.g. Coffee" required maxlength="60" aria-label="Category name">
+  <button class="btn">Add category</button>
+</form>
+
+{% for cat in menu %}
+<section class="mcat">
+  <div class="mcat-head">
+    <h2>{{ cat.name }}</h2>
+    <form method="post" action="/panel/menu/category/{{ cat.id }}/delete" onsubmit="return confirm('Delete this category and all its items?')">
+      <button class="linklike danger-text">Delete category</button>
+    </form>
+  </div>
+
+  <ul class="mitems">
+    {% for item in cat["items"] %}
+    <li class="{{ '' if item.is_available else 'soldout' }}">
+      <details>
+        <summary>
+          <strong>{{ item.name }}</strong>
+          <span class="muted">{% for v in item.variants %}{{ v.label ~ ' ' if v.label }}{{ v.price | zl }}{{ ', ' if not loop.last }}{% endfor %}</span>
+          {% if not item.is_available %}<span class="badge">Sold out</span>{% endif %}
+        </summary>
+        <form method="post" action="/panel/menu/item/{{ item.id }}" class="stack">
+          <label>Name <input name="name" value="{{ item.name }}" required maxlength="80"></label>
+          <label>Description <input name="description" value="{{ item.description }}" maxlength="200"></label>
+          <label>Prices <textarea name="prices" rows="{{ [item.variants | length, 2] | max }}" required>{{ item.prices_text }}</textarea></label>
+          <button class="btn">Save</button>
+        </form>
+        <div class="actions">
+          <form method="post" action="/panel/menu/item/{{ item.id }}/toggle" class="inline"><button class="btn ghost">{{ 'Mark sold out' if item.is_available else 'Back in stock' }}</button></form>
+          <form method="post" action="/panel/menu/item/{{ item.id }}/delete" class="inline" onsubmit="return confirm('Delete this item?')"><button class="btn ghost danger-text">Delete</button></form>
+        </div>
+      </details>
+    </li>
+    {% endfor %}
+  </ul>
+
+  <details class="add-item">
+    <summary>Add an item to {{ cat.name }}</summary>
+    <form method="post" action="/panel/menu/item" class="stack">
+      <input type="hidden" name="category_id" value="{{ cat.id }}">
+      <label>Name <input name="name" required maxlength="80"></label>
+      <label>Description <span class="muted">(optional)</span> <input name="description" maxlength="200"></label>
+      <label>Prices <textarea name="prices" rows="3" required placeholder="Small 6.50&#10;Medium 7.80&#10;Large 9.00"></textarea></label>
+      <button class="btn">Add item</button>
+    </form>
+  </details>
+</section>
+{% else %}
+<p class="empty">Start by creating a category (Coffee, Tea, Desserts…), then add items to it.</p>
+{% endfor %}
+{% endblock %}

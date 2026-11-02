@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Order #{{ order.id }} · {{ APP_NAME }}{% endblock %}
+{% block head %}{% if order.status in ("new", "preparing", "ready") %}<meta http-equiv="refresh" content="15">{% endif %}{% endblock %}
+{% block content %}
+<article class="receipt">
+  <p class="muted">{{ order.venue_name }}{% if order.venue_address %}, {{ order.venue_address }}{% endif %}</p>
+  <h1 class="status status-{{ order.status }}">{{ order.status_label }}</h1>
+
+  {% if order.status == "declined" %}
+    <p>The venue could not accept this order: {{ order.decline_reason }}</p>
+  {% elif order.status == "no_show" %}
+    <p>The venue marked this order as not picked up.</p>
+  {% elif order.status == "completed" %}
+    <p>Enjoy! Thanks for ordering.</p>
+  {% else %}
+    <p>Expected at <strong>{{ order.arrival_local }}</strong> (in {{ order.arrival_minutes }} min from {{ order.created_local }}). This page updates by itself.</p>
+  {% endif %}
+
+  <ul class="lines">
+    {% for it in order["items"] %}
+    <li><span>{{ it.qty }} × {{ it.name }}{% if it.variant_label %} ({{ it.variant_label }}){% endif %}</span><span>{{ (it.price * it.qty) | zl }}</span></li>
+    {% endfor %}
+  </ul>
+  <p class="cart-total"><span>Total, pay at the venue</span><strong>{{ order.total | zl }}</strong></p>
+  <p class="muted small">Order for {{ order.customer_name }}. Keep this page open or bookmark it.</p>
+  <a class="btn ghost" href="/v/{{ order.venue_slug }}">Back to menu</a>
+</article>
+<script>try { localStorage.removeItem("cart:{{ order.venue_slug }}"); } catch (e) {}</script>
+{% endblock %}

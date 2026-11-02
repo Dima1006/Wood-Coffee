@@ -1,0 +1,48 @@
+<div data-new="{{ new_count }}" hidden></div>
+{% if not venue.accepting_orders %}<div class="notice">Your venue is currently <strong>closed for orders</strong>. Change it in Settings.</div>{% endif %}
+
+{% if active %}
+<ul class="orders">
+  {% for o in active %}
+  <li class="order status-{{ o.status }}">
+    <div class="ohead">
+      <h2>#{{ o.id }} {{ o.customer_name }}</h2>
+      <p class="arrive">Arrives <strong>{{ o.arrival_local }}</strong> <span class="muted">(ordered {{ o.created_local }}, +{{ o.arrival_minutes }} min)</span></p>
+      <span class="badge">{{ o.status_label }}</span>
+    </div>
+    <ul class="lines">
+      {% for it in o["items"] %}
+      <li><span>{{ it.qty }} × {{ it.name }}{% if it.variant_label %} ({{ it.variant_label }}){% endif %}</span><span>{{ (it.price * it.qty) | zl }}</span></li>
+      {% endfor %}
+    </ul>
+    <p class="cart-total"><span>Total, pay at the venue</span><strong>{{ o.total | zl }}</strong></p>
+    {% if o.note %}<p class="note">Note: {{ o.note }}</p>{% endif %}
+    {% if o.phone %}<p class="muted">Phone: {{ o.phone }}</p>{% endif %}
+    <div class="actions">
+      {% for nxt in ALLOWED[o.status] if nxt != "declined" %}
+      <form method="post" action="/panel/orders/{{ o.id }}/status" class="inline">
+        <input type="hidden" name="status" value="{{ nxt }}">
+        <button class="btn {{ 'ghost' if nxt == 'no_show' else '' }}">{{ ACTION_LABELS[nxt] }}</button>
+      </form>
+      {% endfor %}
+      <form method="post" action="/panel/orders/{{ o.id }}/status" class="inline decline">
+        <input type="hidden" name="status" value="declined">
+        <input name="reason" placeholder="Reason for declining" maxlength="200" required aria-label="Reason for declining">
+        <button class="btn danger">Decline</button>
+      </form>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">No active orders. New orders appear here by themselves and the page beeps.</p>
+{% endif %}
+
+{% if history %}
+<h2 class="history-title">Recent</h2>
+<ul class="history">
+  {% for o in history %}
+  <li><span>#{{ o.id }} {{ o.customer_name }}</span><span class="badge status-{{ o.status }}">{{ o.status_label }}</span><span>{{ o.total | zl }}</span></li>
+  {% endfor %}
+</ul>
+{% endif %}

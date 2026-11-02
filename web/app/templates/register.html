@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Register your venue · {{ APP_NAME }}{% endblock %}
+{% block nav %}<a href="/login">Log in</a>{% endblock %}
+{% block content %}
+<section class="auth">
+  <h1>Register your venue</h1>
+  {% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/register">
+    <label>Venue name <input name="venue_name" value="{{ form.venue_name or '' }}" required maxlength="80"></label>
+    <label>City <input name="city" value="{{ form.city or '' }}" maxlength="60"></label>
+    <label>Email <input type="email" name="email" value="{{ form.email or '' }}" required autocomplete="email"></label>
+    <label>Password <span class="muted">(8+ characters)</span> <input type="password" name="password" required minlength="8" autocomplete="new-password"></label>
+    <button class="btn wide">Create account</button>
+  </form>
+</section>
+{% endblock %}

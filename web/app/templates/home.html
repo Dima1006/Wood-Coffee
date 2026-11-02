@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Order ahead.<br>Walk in, pick up.</h1>
+  <form method="get" action="/" class="search" role="search">
+    <input type="search" name="q" value="{{ q }}" placeholder="Search by name, city or street" aria-label="Search venues" autofocus>
+    <button class="btn">Search</button>
+  </form>
+</section>
+
+{% if venues %}
+<ul class="venue-list">
+  {% for v in venues %}
+  <li>
+    <a href="/v/{{ v.slug }}">
+      <span class="vname">{{ v.name }}</span>
+      <span class="vmeta">{{ [v.address, v.city] | select | join(", ") or "Address not set" }}</span>
+      <span class="vstate {{ 'open' if v.accepting_orders else 'closed' }}">{{ "Taking orders" if v.accepting_orders else "Closed for orders" }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="empty">{% if q %}No venues match “{{ q }}”.{% else %}No venues yet. Be the first: <a href="/register">register your venue</a>.{% endif %}</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Orders · {{ venue.name }}{% endblock %}
+{% block nav %}{% include "_panel_nav.html" %}{% endblock %}
+{% block content %}
+<h1>Orders</h1>
+<div id="orders">{% include "_orders.html" %}</div>
+{% endblock %}
+{% block scripts %}<script src="/static/panel.js"></script>{% endblock %}

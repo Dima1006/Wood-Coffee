@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ venue.name }} · {{ APP_NAME }}{% endblock %}
+{% block body_attrs %}data-slug="{{ venue.slug }}"{% endblock %}
+{% block content %}
+<div class="venue-head">
+  <h1>{{ venue.name }}</h1>
+  <p class="muted">{{ [venue.address, venue.city] | select | join(", ") }}</p>
+  {% if venue.description %}<p>{{ venue.description }}</p>{% endif %}
+</div>
+
+{% if error %}<div class="notice error" role="alert">{{ error }}</div>{% endif %}
+{% if not venue.accepting_orders %}<div class="notice">This venue is not accepting orders right now.</div>{% endif %}
+
+<div class="venue-layout">
+  <div class="menu">
+    {% for cat in menu %}
+    <section>
+      <h2>{{ cat.name }}</h2>
+      <ul class="items">
+        {% for item in cat["items"] %}
+        <li class="{{ '' if item.is_available else 'soldout' }}">
+          <div class="iinfo">
+            <strong>{{ item.name }}</strong>
+            {% if item.description %}<span class="muted">{{ item.description }}</span>{% endif %}
+          </div>
+          <div class="ivars">
+            {% if not item.is_available %}
+              <span class="muted">Sold out</span>
+            {% else %}
+              {% for v in item.variants %}
+              <button type="button" class="add" data-variant="{{ v.id }}" {{ '' if venue.accepting_orders else 'disabled' }}
+                      aria-label="Add {{ item.name }} {{ v.label }}">
+                {% if v.label %}<span>{{ v.label }}</span>{% endif %}<strong>{{ v.price | zl }}</strong><b aria-hidden="true">+</b>
+              </button>
+              {% endfor %}
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endfor %}
+  </div>
+
+  <aside class="cart" id="cart">
+    <h2>Your order</h2>
+    <p class="muted" id="cart-empty">Nothing here yet. Add something from the menu.</p>
+    <ul id="cart-lines" class="cart-lines"></ul>
+    <p class="cart-total"><span>Total</span><strong id="cart-total">0,00 zł</strong></p>
+
+    <form method="post" action="/v/{{ venue.slug }}/order" id="order-form">
+      <input type="hidden" name="cart" id="cart-json" value="[]">
+      <label>Your name
+        <input name="customer_name" required maxlength="60" autocomplete="given-name" value="{{ form.name or '' }}">
+      </label>
+      <label>Phone <span class="muted">(optional)</span>
+        <input name="phone" type="tel" maxlength="30" autocomplete="tel" value="{{ form.phone or '' }}">
+      </label>
+      <label>I will arrive in
+        <select name="arrival_minutes">
+          {% for m in ARRIVAL_CHOICES %}
+          <option value="{{ m }}" {{ 'selected' if (form.arrival or 15) == m else '' }}>{{ m }} minutes</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Note <span class="muted">(optional)</span>
+        <textarea name="note" rows="2" maxlength="300">{{ form.note or '' }}</textarea>
+      </label>
+      <button class="btn wide" id="submit-order" disabled>Place order</button>
+      <p class="muted small">You pay at the venue when you pick up your order.</p>
+    </form>
+  </aside>
+</div>
+
+<a href="#cart" class="cart-bar" id="cart-bar" hidden><span id="cart-bar-count"></span><strong id="cart-bar-total"></strong></a>
+
+<script type="application/json" id="menu-data">{{ menu_data | tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="/static/cart.js"></script>{% endblock %}

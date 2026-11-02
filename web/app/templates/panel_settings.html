@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Settings · {{ venue.name }}{% endblock %}
+{% block nav %}{% include "_panel_nav.html" %}{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+{% if saved %}<div class="notice">Saved.</div>{% endif %}
+<form method="post" action="/panel/settings" class="stack narrow">
+  <label>Venue name <input name="name" value="{{ venue.name }}" required maxlength="80"></label>
+  <label>City <input name="city" value="{{ venue.city }}" maxlength="60"></label>
+  <label>Street address <input name="address" value="{{ venue.address }}" maxlength="120"></label>
+  <label>Short description <textarea name="description" rows="3" maxlength="300">{{ venue.description }}</textarea></label>
+  <label class="check"><input type="checkbox" name="accepting_orders" {{ 'checked' if venue.accepting_orders else '' }}> Accepting orders</label>
+  <button class="btn">Save</button>
+</form>
+<p class="muted">Your public page: <a href="/v/{{ venue.slug }}">/v/{{ venue.slug }}</a>. It appears on the home page once you have at least one available item.</p>
+{% endblock %}

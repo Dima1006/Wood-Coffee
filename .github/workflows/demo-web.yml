@@ -1,0 +1,61 @@
+name: Run web demo
+
+# Manual demo launcher: starts the site on the runner and exposes it through a
+# temporary Cloudflare quick tunnel. The URL is printed in the run summary.
+# The database is temporary: everything is lost when the run ends.
+on:
+  workflow_dispatch:
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: web/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r web/requirements.txt
+
+      - name: Start the site
+        working-directory: web
+        env:
+          DEMO_SEED: "1"
+          DEMO_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        run: |
+          nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > ../server.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fs http://127.0.0.1:8000/ > /dev/null && break
+            sleep 1
+          done
+          curl -fs http://127.0.0.1:8000/ > /dev/null || { cat ../server.log; exit 1; }
+
+      - name: Open a public tunnel
+        run: |
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+          chmod +x cloudflared
+          nohup ./cloudflared tunnel --no-autoupdate --url http://127.0.0.1:8000 > tunnel.log 2>&1 &
+          URL=""
+          for i in $(seq 1 30); do
+            URL=$(grep -o 'https://[-a-z0-9]*\.trycloudflare\.com' tunnel.log | head -1 || true)
+            [ -n "$URL" ] && break
+            sleep 2
+          done
+          [ -n "$URL" ] || { cat tunnel.log; exit 1; }
+          echo "Demo URL: $URL"
+          {
+            echo "### Demo is live"
+            echo "$URL"
+            echo ""
+            echo "Venue panel login: \`demo@woodcoffee.pl\` (password: DEMO_PASSWORD secret, or see the server log below)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          grep '\[demo\]' server.log || true
+
+      - name: Keep running (cancel the run to stop)
+        run: sleep 21000
